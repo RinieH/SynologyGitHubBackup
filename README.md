@@ -189,6 +189,17 @@ This mode consumes more disk space on repositories with many branches.
 
 ---
 
+# Excluding repositories (optional)
+
+If you want to skip specific repositories entirely, add an exclude list to the script.
+
+Add this in the CONFIG section:
+
+## Space separated list of repos to exclude completely (owner/repo)
+EXCLUDE_REPOS="ORG/BigRepoA"
+
+---
+
 # Scheduling
 
 Set the schedule to run daily during low activity hours.
