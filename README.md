@@ -60,8 +60,8 @@ After setup is complete, SSH can be disabled again.
 ### 3. Create a Dedicated Shared Folder
 
 Create a new shared folder, for example:
-Github Backups
 
+Github Backups
 
 Keeping backups in a dedicated share makes protection and versioning easier.
 
@@ -74,6 +74,7 @@ Create a **Classic Personal Access Token**:
 GitHub → Settings → Developer Settings → Personal Access Tokens → Tokens (Classic)
 
 Required scope:
+
 repo
 
 No additional scopes are required.
@@ -94,14 +95,15 @@ Create → Scheduled Task → User-defined script
 
 Run the task as a user that has write access to the shared folder.
 
-Paste the full backup script into the **Run command** field.
+Paste the full backup script into the Run command field.
 
 Configure:
 
-- `TOKEN` → Your GitHub Personal Access Token  
-- `BACKUP_SHARE` → Your Synology shared folder path  
+- TOKEN → Your GitHub Personal Access Token  
+- BACKUP_SHARE → Your Synology shared folder path  
 
 Example:
+
 /volume1/Github Backups
 
 Make sure the path matches exactly what File Station shows.
@@ -119,15 +121,16 @@ Optionally enable email notifications for failures.
 ## Logging
 
 The script creates:
-/Github Backups/logs/github-backup.log
-/Github Backups/logs/last-run.txt
+
+Github Backups/logs/github-backup.log  
+Github Backups/logs/last-run.txt  
 
 You can open these directly in File Station to see:
 
-- What was cloned
-- What was updated
-- When the last run completed
-- Whether any errors occurred
+- What was cloned  
+- What was updated  
+- When the last run completed  
+- Whether any errors occurred  
 
 ---
 
@@ -137,9 +140,9 @@ No.
 
 The script only performs:
 
-- `git clone --mirror`
-- `git fetch --all --prune`
-- GitHub API read operations
+- `git clone --mirror`  
+- `git fetch --all --prune`  
+- GitHub API read operations  
 
 There are no push operations.
 
@@ -196,58 +199,59 @@ This gives you:
 
 ---
 
-## Why Mirror Instead of ZIP?
+## Verifying Your Backup Locally
 
-`git clone --mirror` preserves:
+If you want to confirm that the `.git` mirror contains everything (branches, history, tags), you can copy one of the mirrored repositories to your local machine and validate it with Git.
 
-- All branches  
-- All tags  
-- All refs  
-- Full history  
+### Step 1: Copy the Mirror Repository
 
-This allows full restoration or migration to another Git host.
+Navigate to your Synology share:
 
-This is the same method recommended by GitHub for repository backups.
+\\NAS-NAME\Github Backups\repos\owner\
 
----
+Copy the entire repository folder, for example:
 
-## Restoring a Repository
+Cortex-AZQR.git
 
-To restore to GitHub or another Git host:
-git clone --mirror repo.git
-git push --mirror NEW_REMOTE
+Paste it somewhere locally, for example:
+
+C:\Temp\Cortex-AZQR.git
 
 ---
 
-## Recommended Folder Structure
-Github Backups/
-repos/
-username/repo.git
-logs/
-github-backup.log
-last-run.txt
+### Step 2: Inspect the Mirror Directly
+
+Open PowerShell or Git Bash and run:
+
+git --git-dir "C:\Temp\Cortex-AZQR.git" show-ref --heads
+
+To list tags:
+
+git --git-dir "C:\Temp\Cortex-AZQR.git" tag
+
+To inspect commit history:
+
+git --git-dir "C:\Temp\Cortex-AZQR.git" log --oneline --all
+
+If branches and commits appear as expected, your backup is complete.
 
 ---
 
-## Security Notes
+### Step 3: Create a Working Copy (Optional)
 
-- Your GitHub token is stored inside the scheduled task configuration  
-- Restrict access to DSM administrator accounts  
-- Limit permissions on the backup shared folder  
-- Disable SSH after setup if not needed  
+cd C:\Temp  
+git clone "C:\Temp\Cortex-AZQR.git" Cortex-AZQR  
+cd Cortex-AZQR  
+git branch -a  
 
-For higher security, consider using a fine-grained token limited to repository read access only.
+Switch to any branch:
+
+git checkout dev
+
+If the code appears correctly, your mirror contains everything needed to restore the repository.
 
 ---
 
-## Final Notes
+## Cleanup
 
-This solution keeps your Git data local, versionable, and under your control.
-
-For full resilience:
-
-Mirror locally  
-Enable snapshots  
-Protect off-device with Hyper Backup  
-
-That combination gives you practical, production-grade protection for your GitHub repositories.
+After testing, you can safely delete the copied `.git` folder and the test working directory from your local machine. This does not affect the backup stored on your Synology.
