@@ -18,6 +18,7 @@ PER_PAGE=100
 # Working copy mode:
 #   none    -> mirror only
 #   default -> one working copy per repo on default branch
+#   all     -> create a working directory per branch (git worktrees)
 WORKING_MODE="none"
 
 # Space separated list of repos to exclude completely (owner/repo)
@@ -95,6 +96,57 @@ ensure_working_default() {
   run_git "work.reset ${full_name}" -C "$wd" reset --hard "origin/$default_branch"
 }
 
+ensure_working_all() {
+  full_name="$1"
+  default_branch="$2"
+  mirror_git_dir="$3"
+
+  repo_root="${WORK_DIR}/${full_name}"
+  base_repo="${repo_root}/_repo"
+  branches_root="${repo_root}/branches"
+
+  mkdir -p "$base_repo" "$branches_root"
+
+  if [ ! -d "$base_repo/.git" ]; then
+    log "WORK all init ${full_name}"
+    run_git "workall.clone ${full_name}" clone "$mirror_git_dir" "$base_repo"
+  else
+    log "WORK all exists ${full_name}"
+  fi
+
+  # Ensure base repo never fetches from GitHub
+  run_git "workall.set-origin ${full_name}" -C "$base_repo" remote set-url origin "$mirror_git_dir"
+  run_git "workall.fetch ${full_name}" -C "$base_repo" fetch --all --prune
+  run_git "workall.prune ${full_name}" -C "$base_repo" worktree prune
+
+  # Create or update a worktree per remote branch
+  "$GIT" -C "$base_repo" for-each-ref --format='%(refname:short)' refs/remotes/origin/ \
+    | while read -r ref
+      do
+        [ -n "$ref" ] || continue
+        [ "$ref" = "origin/HEAD" ] && continue
+
+        branch="${ref#origin/}"
+        wt_path="${branches_root}/${branch}"
+
+        if [ -d "$wt_path/.git" ] || [ -d "$wt_path" ]; then
+          log "WORK all update ${full_name} ${branch}"
+          run_git "workall.checkout ${full_name} ${branch}" -C "$wt_path" checkout -f "$branch" || \
+          run_git "workall.checkout-create ${full_name} ${branch}" -C "$wt_path" checkout -f -B "$branch" "origin/$branch"
+          run_git "workall.reset ${full_name} ${branch}" -C "$wt_path" reset --hard "origin/$branch"
+        else
+          log "WORK all add ${full_name} ${branch}"
+          mkdir -p "$(dirname "$wt_path")"
+          run_git "workall.add ${full_name} ${branch}" -C "$base_repo" worktree add -f -B "$branch" "$wt_path" "origin/$branch"
+        fi
+      done
+
+  # Optional: ensure default branch exists as a worktree folder
+  if [ -n "$default_branch" ] && [ -d "${branches_root}/${default_branch}" ]; then
+    :
+  fi
+}
+
 START_TS="$(ts)"
 log "===== GitHub backup start (user $(whoami)) ====="
 log "Target mirrors: $REPOS_DIR"
@@ -147,6 +199,8 @@ while : ; do
 
         if [ "$WORKING_MODE" = "default" ]; then
           ensure_working_default "$FULL_NAME" "$DEFAULT_BRANCH" "$TARGET"
+        elif [ "$WORKING_MODE" = "all" ]; then
+          ensure_working_all "$FULL_NAME" "$DEFAULT_BRANCH" "$TARGET"
         fi
       done
 
