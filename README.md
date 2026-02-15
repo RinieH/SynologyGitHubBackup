@@ -6,6 +6,8 @@ This solution mirrors all repositories from your personal GitHub account to a sh
 
 It is designed to run as a Scheduled Task in DSM without external dependencies beyond Git and standard system tools.
 
+<img width="1632" height="640" alt="image" src="https://github.com/user-attachments/assets/59ce5f89-097b-42c2-a24f-445390193e54" />
+
 ---
 
 ## What This Script Does
