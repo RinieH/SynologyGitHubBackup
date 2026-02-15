@@ -119,6 +119,10 @@ ensure_working_all() {
   run_git "workall.fetch ${full_name}" -C "$base_repo" fetch --all --prune
   run_git "workall.prune ${full_name}" -C "$base_repo" worktree prune
 
+  # IMPORTANT: _repo must NOT have "main" (or any branch we want as a worktree) checked out,
+  # otherwise "worktree add -B main ..." can fail.
+  run_git "workall.detach ${full_name}" -C "$base_repo" checkout --detach
+
   # Create or update a worktree per remote branch
   "$GIT" -C "$base_repo" for-each-ref --format='%(refname:short)' refs/remotes/origin/ \
     | while read -r ref
